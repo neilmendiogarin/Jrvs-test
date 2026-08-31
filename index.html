@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Voice Assistant ($0 Free)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #2563eb;
+        }
+        .status {
+            margin-top: 20px;
+            font-style: italic;
+            color: #94a3b8;
+        }
+        .transcript {
+            margin-top: 15px;
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            min-height: 40px;
+            text-align: left;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Local Voice Assistant</h2>
+        <p>Say <strong>"Jarvis"</strong> (or your target name) followed by your command!</p>
+        
+        <button id="startBtn">Start Assistant</button>
+        
+        <div class="status" id="status">Status: Idle</div>
+        <div class="transcript" id="transcript">Listening output will appear here...</div>
+    </div>
+
+    <script>
+        const WAKE_WORD = "jarvis"; // Change this to your preferred name/wake word
+        const startBtn = document.getElementById('startBtn');
+        const statusEl = document.getElementById('status');
+        const transcriptEl = document.getElementById('transcript');
+
+        let recognition;
+        let isListening = false;
+
+        // Check for browser speech recognition support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            alert("Your browser does not support Speech Recognition. Please use Google Chrome or Microsoft Edge.");
+        } else {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                statusEl.innerText = "Status: Listening for wake word ('" + WAKE_WORD + "')...";
+                isListening = true;
+                startBtn.innerText = "Stop Assistant";
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                const spokenText = (finalTranscript || interimTranscript).toLowerCase().trim();
+                transcriptEl.innerText = "Heard: " + spokenText;
+
+                // Check if wake word is mentioned
+                if (spokenText.includes(WAKE_WORD)) {
+                    statusEl.innerText = "Status: Wake word detected! Processing command...";
+                    
+                    // Extract whatever comes after the wake word
+                    const parts = spokenText.split(WAKE_WORD);
+                    const command = parts[parts.length - 1].trim();
+
+                    if (command.length > 0) {
+                        recognition.stop(); // Stop listening temporarily while processing
+                        handleCommand(command);
+                    }
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+            };
+
+            recognition.onend = () => {
+                // Keep it running continuously if the user didn't manually stop it
+                if (isListening) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        // Already started handle
+                    }
+                } else {
+                    statusEl.innerText = "Status: Idle";
+                    startBtn.innerText = "Start Assistant";
+                }
+            };
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (!isListening) {
+                try {
+                    recognition.start();
+                } catch(e) {}
+            } else {
+                isListening = false;
+                recognition.stop();
+            }
+        });
+
+        // Function to handle the command (Connect this to your backend/Gemini API)
+        async function handleCommand(command) {
+            transcriptEl.innerText = "Command: " + command;
+            statusEl.innerText = "Status: Thinking...";
+
+            // FOR A FREE TEST: You can replace this simulated response with a fetch() call to Google Gemini API or your n8n webhook URL!
+            let reply = "You said: " + command + ". I am ready to be connected to an AI brain!";
+            
+            // Simulating a smart response (You can hook your Gemini API key here later)
+            if (command.includes("hello")) {
+                reply = "Hello! How can I help you today?";
+            } else if (command.includes("time")) {
+                reply = "The current time is " + new Date().toLocaleTimeString();
+            }
+
+            speakResponse(reply);
+        }
+
+        // Text-to-Speech using Browser Native SpeechSynthesis (100% Free)
+        function speakResponse(text) {
+            statusEl.innerText = "Status: Speaking...";
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            
+            utterance.onend = () => {
+                statusEl.innerText = "Status: Listening for wake word ('" + WAKE_WORD + "')...";
+                if (isListening) {
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
